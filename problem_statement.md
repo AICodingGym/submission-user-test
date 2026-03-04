@@ -1,10 +1,14 @@
 minversion failures
+==================
+
 The change in PR #7647 causes `minversion` to fail in certain cases, e.g.:
-```
+
 ```python
->>> from astropy.utils import minversion
->>> minversion('numpy', '1.14dev')
+from astropy.utils import minversion
+minversion('numpy', '1.14dev')
 ```
+
+This can produce a traceback like the following:
 
 ```
 TypeError                                 Traceback (most recent call last)
@@ -35,30 +39,28 @@ TypeError                                 Traceback (most recent call last)
 
 TypeError: '<' not supported between instances of 'int' and 'str'
 ```
-apparently because of a bug in LooseVersion (https://bugs.python.org/issue30272):
 
-```
+This appears to be caused by a bug in `distutils.version.LooseVersion` (see https://bugs.python.org/issue30272). For example:
+
 ```python
->>> from distutils.version import LooseVersion
->>> LooseVersion('1.14.3')  >= LooseVersion('1.14dev')
-...
-TypeError: '<' not supported between instances of 'int' and 'str'
+from distutils.version import LooseVersion
+LooseVersion('1.14.3') >= LooseVersion('1.14dev')
+# => TypeError: '<' not supported between instances of 'int' and 'str'
 ```
 
-Note that without the ".3" it doesn't fail:
+Note that the comparison does not fail for the shorter form without the patch component:
 
-```
->>> LooseVersion('1.14')  >= LooseVersion('1.14dev')
-False
-```
-
-and using pkg_resources.parse_version (which was removed) works:
-```
->>> from pkg_resources import parse_version
->>> parse_version('1.14.3') >= parse_version('1.14dev')
-True
+```python
+LooseVersion('1.14') >= LooseVersion('1.14dev')
+# => False
 ```
 
-CC: @mhvk 
+Using `pkg_resources.parse_version` (which was removed) handled these cases correctly:
 
+```python
+from pkg_resources import parse_version
+parse_version('1.14.3') >= parse_version('1.14dev')
+# => True
 ```
+
+CC: @mhvk
